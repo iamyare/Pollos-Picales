@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
+interface DailyProduction {
+  id?: string;
+  date: string;
+  product_id: string;
+  quantity_produced: number;
+  waste_quantity?: number;
+  location_id?: string;
+}
+
+interface ProductionEfficiency {
+  product_id: string;
+  product_name: string;
+  total_produced: number;
+  waste_quantity: number;
+  efficiency_percentage: number;
+}
+
 interface ProductionStore {
   isLoading: boolean;
   error: string | null;
@@ -21,7 +38,7 @@ export const useProductionStore = create<ProductionStore>((set) => ({
     totalTortillas: 0,
     efficiency: 0,
   },
-  registerProduction: async (production) => {
+  registerProduction: async (production: DailyProduction) => {
     try {
       set({ isLoading: true, error: null });
       const { error } = await supabase
@@ -35,19 +52,22 @@ export const useProductionStore = create<ProductionStore>((set) => ({
       set({ isLoading: false });
     }
   },
-  fetchDailyStats: async (date) => {
+  fetchDailyStats: async (date: string) => {
     try {
       set({ isLoading: true, error: null });
       const { data: efficiency } = await supabase
         .rpc('get_production_efficiency', {
           p_start_date: date,
           p_end_date: date,
-        });
+        }) as { data: ProductionEfficiency[] | null };
 
       if (efficiency && efficiency.length > 0) {
-        const totalChicken = efficiency.find(p => p.product_name.includes('Pollo'))?.total_produced || 0;
-        const totalTortillas = efficiency.find(p => p.product_name.includes('Tortilla'))?.total_produced || 0;
-        const avgEfficiency = efficiency.reduce((acc, curr) => acc + curr.efficiency_percentage, 0) / efficiency.length;
+        const totalChicken = efficiency.find((p: ProductionEfficiency) => 
+          p.product_name.includes('Pollo'))?.total_produced || 0;
+        const totalTortillas = efficiency.find((p: ProductionEfficiency) => 
+          p.product_name.includes('Tortilla'))?.total_produced || 0;
+        const avgEfficiency = efficiency.reduce((acc: number, curr: ProductionEfficiency) => 
+          acc + curr.efficiency_percentage, 0) / efficiency.length;
 
         set({
           dailyStats: {

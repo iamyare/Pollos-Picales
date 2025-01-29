@@ -1,55 +1,196 @@
 import { supabase } from "@/lib/supabase";
-import { Database } from "@/lib/database.types";
 
-type Sales = Database['public']['Tables']['sales']['Row'];
-type Production = Database['public']['Tables']['daily_production']['Row'];
-type LowStockItem = Awaited<ReturnType<typeof getLowStockItems>>[number];
+// Interfaces
+interface DashboardParams {
+  startDate?: string;
+  endDate?: string;
+  locationId?: string;
+}
 
-export const getDashboardMetrics = async () => {
-  const today = new Date().toISOString().split('T')[0];
+interface DashboardMetrics {
+  dailySales: number;
+  chickensProduced: number;
+  tortillasProduced: number;
+  lowStockItems: LowStockItem[];
+}
+
+interface LowStockItem {
+  name: string;
+  amount: number;
+}
+
+interface TransactionParams {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+  status?: 'pending' | 'completed' | 'cancelled';
+  locationId?: string;
+  productId?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  sortBy?: 'date' | 'total' | 'status';
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface ProductionQuery {
+  productId: string;
+  startDate: string;
+  endDate: string;
+  locationId?: string;
+  includeWaste?: boolean;
+}
+
+const getProductionData = async ({ 
+  productId, 
+  startDate, 
+  endDate, 
+  locationId, 
+  includeWaste 
+}: ProductionQuery) => {
+  let query = supabase
+    .from('daily_production')
+    .select(includeWaste ? 'quantity_produced, waste_quantity' : 'quantity_produced')
+    .eq('product_id', productId)
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(`Error fetching production for ${productId}:`, error);
+    return null;
+  }
+
+  return data;
+};
+
+export const getDashboardMetrics = async ({
+  startDate = new Date().toISOString().split('T')[0],
+  endDate = new Date().toISOString().split('T')[0],
+  locationId,
+}: DashboardParams = {}): Promise<DashboardMetrics> => {
+  try {
+    // Consulta de ventas
+    const { data: sales, error: salesError } = await supabase
+      .from('sales')
+      .select('total, date')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (salesError) throw salesError;
+
+    // Consulta de producción de pollos
+    const { data: chickenProduction, error: chickenError } = await supabase
+      .from('daily_production')
+      .select('quantity_produced')
+      .eq('product_type', 'CHICKEN')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (chickenError) throw chickenError;
+
+    // Consulta de producción de tortillas
+    const { data: tortillaProduction, error: tortillaError } = await supabase
+      .from('daily_production')
+      .select('quantity_produced')
+      .eq('product_type', 'TORTILLA')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (tortillaError) throw tortillaError;
+
+    // Obtener items con stock bajo
+    const lowStockItems = await getLowStockItems(locationId);
+
+    return {
+      dailySales: sales?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0,
+      chickensProduced: chickenProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
+      tortillasProduced: tortillaProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
+      lowStockItems: lowStockItems.length ? lowStockItems : [{ name: 'Sin alertas', amount: 0 }]
+    };
+  } catch (error) {
+    console.error('Error in getDashboardMetrics:', error);
+    return {
+      dailySales: 0,
+      chickensProduced: 0,
+      tortillasProduced: 0,
+      lowStockItems: [{ name: 'Error al cargar datos', amount: 0 }]
+    };
+  }
+};
+
+export const getLowStockItems = async (locationId?: string) => {
+  let query = supabase.rpc('check_low_stock');
   
-  // Obtener ventas del día
-  const { data: sales } = await supabase
-    .from('sales')
-    .select('total')
-    .gte('date', today);
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  
+  const { data, error } = await query;
 
-  // Obtener producción de pollos
-  const { data: chickenProduction } = await supabase
-    .from('daily_production')
-    .select('quantity_produced, waste_quantity')
-    .eq('product_id', 'CHICKEN_PRODUCT_ID')
-    .gte('date', today);
+  if (error) {
+    console.error('Error fetching low stock items:', error);
+    return [];
+  }
 
-  // Obtener producción de tortillas
-  const { data: tortillaProduction } = await supabase
-    .from('daily_production')
-    .select('quantity_produced, waste_quantity')
-    .eq('product_id', 'TORTILLA_PRODUCT_ID')
-    .gte('date', today);
-
-  // Obtener stock bajo
-  const lowStockItems = await getLowStockItems();
-
-  return {
-    dailySales: sales?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0,
-    chickensProduced: chickenProduction?.[0]?.quantity_produced || 0,
-    tortillasProduced: tortillaProduction?.[0]?.quantity_produced || 0,
-    lowStockItems
-  };
-};
-
-export const getLowStockItems = async () => {
-  const { data } = await supabase.rpc('check_low_stock');
   return data || [];
 };
 
-export const getRecentTransactions = async () => {
-  const { data } = await supabase
-    .from('sales')
-    .select('id, date, total, sale_details ( product_id, quantity )')
-    .order('date', { ascending: false })
-    .limit(5);
+export const getRecentTransactions = async ({
+  startDate,
+  endDate,
+  limit = 5,
+  offset = 0,
+  status,
+  locationId,
+  productId,
+  minAmount,
+  maxAmount,
+  sortBy = 'date',
+  sortOrder = 'desc'
+}: TransactionParams = {}) => {
+  try {
+    let query = supabase
+      .from('sales')
+      .select(`
+        id,
+        date,
+        total,
+        status,
+        location_id,
+        sale_details (
+          product_id,
+          quantity,
+          unit_price
+        )
+      `)
+      .order(sortBy, { ascending: sortOrder === 'asc' });
 
-  return data || [];
+    // Aplicar filtros solo si están definidos
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    if (status) query = query.eq('status', status);
+    if (locationId) query = query.eq('location_id', locationId);
+    if (minAmount) query = query.gte('total', minAmount);
+    if (maxAmount) query = query.lte('total', maxAmount);
+    if (productId) {
+      query = query.contains('sale_details', [{ product_id: productId }]);
+    }
+
+    const { data, error } = await query
+      .limit(limit)
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getRecentTransactions:', error);
+    return [];
+  }
 };

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Bell, ChevronDown, Menu, Package, BarChart3, ShoppingCart, Trash2, Wallet, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,21 +8,41 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getDashboardMetrics, getRecentTransactions } from "@/actions";
 
+interface DashboardMetrics {
+  dailySales: number;
+  chickensProduced: number;
+  tortillasProduced: number;
+  lowStockItems: LowStockItem[];
+}
+
+interface LowStockItem {
+  name: string;
+  amount: number;
+}
+
 export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
     dailySales: 0,
     chickensProduced: 0,
     tortillasProduced: 0,
-    lowStockItems: [] as LowStockItem[],
+    lowStockItems: [],
   });
   const [transactions, setTransactions] = useState<any[]>([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
-      const metricsData = await getDashboardMetrics();
-      const transactionsData = await getRecentTransactions();
+      const today = new Date().toISOString().split('T')[0];
+      const metricsData = await getDashboardMetrics({
+        startDate: today,
+        endDate: today
+      });
+      
+      const transactionsData = await getRecentTransactions({
+        limit: 5,
+        startDate: today
+      });
+      
       setMetrics(metricsData);
       setTransactions(transactionsData);
     };
@@ -110,25 +129,33 @@ export function Dashboard() {
             />
             <MetricCard
               title="Pollos Producidos"
-              value={metrics.chickensProduced}
+              value={`${metrics.chickensProduced}`}
               subtitle={`${metrics.chickensProduced} unidades`}
             />
             <MetricCard
               title="Tortillas Producidas"
-              value={metrics.tortillasProduced}
+              value={`${metrics.tortillasProduced}`}
               subtitle="5 kg de masa"
             />
             <MetricCard
               title="Alertas Stock"
-              value={metrics.lowStockItems.length}
+              value={`${metrics.lowStockItems.length}`}
               subtitle="Productos bajo mínimo"
               alert
             />
           </div>
 
-          <StockAlertCard items={metrics.lowStockItems} />
+          {metrics.lowStockItems.length ? (
+            <StockAlertCard items={metrics.lowStockItems} />
+          ) : (
+            <p>No hay alertas de stock.</p>
+          )}
           
-          <RecentTransactionsCard transactions={transactions} />
+          {transactions.length ? (
+            <RecentTransactionsCard transactions={transactions} />
+          ) : (
+            <p>No hay transacciones recientes.</p>
+          )}
         </div>
       </main>
     </div>
