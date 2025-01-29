@@ -19,6 +19,14 @@ interface LowStockItem {
   amount: number;
 }
 
+interface LowStockItemResponse {
+  product_id: string;
+  product_name: string;
+  current_stock: number;
+  min_stock: number;
+  unit_name: string;
+}
+
 interface TransactionParams {
   startDate?: string;
   endDate?: string;
@@ -41,7 +49,8 @@ interface ProductionQuery {
   includeWaste?: boolean;
 }
 
-const getProductionData = async ({ 
+// Exportar la función para que pueda ser utilizada
+export const getProductionData = async ({ 
   productId, 
   startDate, 
   endDate, 
@@ -114,6 +123,7 @@ export const getDashboardMetrics = async ({
     if (tortillaError) throw tortillaError;
 
     // Obtener items con stock bajo utilizando la función RPC existente
+    // Tipar correctamente la respuesta de check_low_stock
     const { data: lowStockItems, error: lowStockError } = await supabase
       .rpc('check_low_stock');
 
@@ -123,7 +133,7 @@ export const getDashboardMetrics = async ({
       dailySales: sales?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0,
       chickensProduced: chickenProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
       tortillasProduced: tortillaProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
-      lowStockItems: lowStockItems?.map(item => ({
+      lowStockItems: lowStockItems?.map((item: LowStockItemResponse) => ({
         name: item.product_name,
         amount: Number(item.current_stock)
       })) || []
