@@ -27,7 +27,7 @@ interface SidebarProps {
 const navigation = [
   { path: "/", icon: BarChart3, label: "Dashboard" },
   { path: "/pos", icon: ShoppingCart, label: "Punto de Venta" },
-  { path: "/inventory", icon: Package, label: "Inventario" },
+  { path: "/products", icon: Package, label: "Productos" },
   { path: "/waste", icon: Trash2, label: "Control de Sobras" },
   { path: "/finance", icon: Wallet, label: "Finanzas" },
   { path: "/reports", icon: FileText, label: "Reportes" }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePosStore } from "@/stores/usePosStore";
-import { Search, ShoppingCart, Trash } from "lucide-react";
+import { ShoppingCart, Trash } from "lucide-react";
 
 export function POS() {
   const { 
