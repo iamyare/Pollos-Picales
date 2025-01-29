@@ -72,7 +72,6 @@ const getProductionData = async ({
 export const getDashboardMetrics = async ({
   startDate = new Date().toISOString().split('T')[0],
   endDate = new Date().toISOString().split('T')[0],
-  locationId,
 }: DashboardParams = {}): Promise<DashboardMetrics> => {
   try {
     // Consulta de ventas
@@ -87,8 +86,13 @@ export const getDashboardMetrics = async ({
     // Consulta de producción de pollos
     const { data: chickenProduction, error: chickenError } = await supabase
       .from('daily_production')
-      .select('quantity_produced')
-      .eq('product_type', 'CHICKEN')
+      .select(`
+        quantity_produced,
+        products!inner(
+          name
+        )
+      `)
+      .eq('products.name', 'Pollo')
       .gte('date', startDate)
       .lte('date', endDate);
 
@@ -97,21 +101,32 @@ export const getDashboardMetrics = async ({
     // Consulta de producción de tortillas
     const { data: tortillaProduction, error: tortillaError } = await supabase
       .from('daily_production')
-      .select('quantity_produced')
-      .eq('product_type', 'TORTILLA')
+      .select(`
+        quantity_produced,
+        products!inner(
+          name
+        )
+      `)
+      .eq('products.name', 'Tortilla')
       .gte('date', startDate)
       .lte('date', endDate);
 
     if (tortillaError) throw tortillaError;
 
-    // Obtener items con stock bajo
-    const lowStockItems = await getLowStockItems(locationId);
+    // Obtener items con stock bajo utilizando la función RPC existente
+    const { data: lowStockItems, error: lowStockError } = await supabase
+      .rpc('check_low_stock');
+
+    if (lowStockError) throw lowStockError;
 
     return {
       dailySales: sales?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0,
       chickensProduced: chickenProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
       tortillasProduced: tortillaProduction?.reduce((acc, curr) => acc + (curr.quantity_produced || 0), 0) || 0,
-      lowStockItems: lowStockItems.length ? lowStockItems : [{ name: 'Sin alertas', amount: 0 }]
+      lowStockItems: lowStockItems?.map(item => ({
+        name: item.product_name,
+        amount: Number(item.current_stock)
+      })) || []
     };
   } catch (error) {
     console.error('Error in getDashboardMetrics:', error);
@@ -124,14 +139,8 @@ export const getDashboardMetrics = async ({
   }
 };
 
-export const getLowStockItems = async (locationId?: string) => {
-  let query = supabase.rpc('check_low_stock');
-  
-  if (locationId) {
-    query = query.eq('location_id', locationId);
-  }
-  
-  const { data, error } = await query;
+export const getLowStockItems = async () => {
+  const { data, error } = await supabase.rpc('check_low_stock');
 
   if (error) {
     console.error('Error fetching low stock items:', error);
@@ -147,7 +156,6 @@ export const getRecentTransactions = async ({
   limit = 5,
   offset = 0,
   status,
-  locationId,
   productId,
   minAmount,
   maxAmount,
@@ -162,7 +170,6 @@ export const getRecentTransactions = async ({
         date,
         total,
         status,
-        location_id,
         sale_details (
           product_id,
           quantity,
@@ -175,7 +182,6 @@ export const getRecentTransactions = async ({
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);
     if (status) query = query.eq('status', status);
-    if (locationId) query = query.eq('location_id', locationId);
     if (minAmount) query = query.gte('total', minAmount);
     if (maxAmount) query = query.lte('total', maxAmount);
     if (productId) {
