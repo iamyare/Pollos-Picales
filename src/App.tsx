@@ -1,17 +1,17 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { MainLayout } from "@/components/layouts/MainLayout";
 import { Dashboard } from "@/pages/Dashboard";
-import { Production } from "@/pages/Production";
-// Importar otros componentes
+import { POS } from "@/pages/POS";
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/production" element={<Production />} />
-        {/* <Route path="/inventory" element={<Inventory />} />
-        <Route path="/sales" element={<Sales />} />
-        <Route path="/financials" element={<Financials />} /> */}
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="pos" element={<POS />} />
+          {/* Agregar más rutas según sea necesario */}
+        </Route>
       </Routes>
     </Router>
   );

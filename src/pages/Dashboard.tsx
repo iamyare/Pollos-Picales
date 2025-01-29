@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Bell, ChevronDown, Menu, Package, BarChart3, ShoppingCart, Trash2, Wallet, FileText } from "lucide-react";
+import { getDashboardMetrics, getRecentTransactions } from "@/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getDashboardMetrics, getRecentTransactions } from "@/actions";
+import { EmptyState } from "@/components/EmptyState";
 
 interface DashboardMetrics {
   dailySales: number;
@@ -21,7 +20,6 @@ interface LowStockItem {
 }
 
 export function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     dailySales: 0,
     chickensProduced: 0,
@@ -50,135 +48,44 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div className="flex w-full min-h-screen bg-gray-50">
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetTrigger asChild className="lg:hidden">
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Pollo & Tortillas</SheetTitle>
-          </SheetHeader>
-          <nav className="space-y-1 p-4">
-            <NavItem icon={BarChart3} label="Dashboard" active />
-            <NavItem icon={Package} label="Inventario" />
-            <NavItem icon={ShoppingCart} label="Ventas" />
-            <NavItem icon={Trash2} label="Control de Sobras" />
-            <NavItem icon={Wallet} label="Finanzas" />
-            <NavItem icon={FileText} label="Reportes" />
-          </nav>
-        </SheetContent>
-      </Sheet>
-      <aside className="hidden lg:block w-64 bg-white border-r border-gray-200">
-        <div className="p-4 border-b">
-          <h1 className="text-xl font-semibold">Pollo & Tortillas</h1>
-        </div>
-        <nav className="space-y-1 p-4">
-          <NavItem icon={BarChart3} label="Dashboard" active />
-          <NavItem icon={Package} label="Inventario" />
-          <NavItem icon={ShoppingCart} label="Ventas" />
-          <NavItem icon={Trash2} label="Control de Sobras" />
-          <NavItem icon={Wallet} label="Finanzas" />
-          <NavItem icon={FileText} label="Reportes" />
-        </nav>
-      </aside>
-      <main className="flex-1">
-        <header className="flex justify-between items-center p-4 border-b bg-white lg:p-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-            <h2 className="text-2xl font-semibold">Dashboard</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>MP</AvatarFallback>
-                  </Avatar>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>Perfil</DropdownMenuItem>
-                <DropdownMenuItem>Configuración</DropdownMenuItem>
-                <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Ventas Hoy"
+          value={`$${metrics.dailySales.toFixed(2)}`}
+          change="+15%"
+          positive
+        />
+        <MetricCard
+          title="Pollos Producidos"
+          value={`${metrics.chickensProduced}`}
+          subtitle={`${metrics.chickensProduced} unidades`}
+        />
+        <MetricCard
+          title="Tortillas Producidas"
+          value={`${metrics.tortillasProduced}`}
+          subtitle="5 kg de masa"
+        />
+        <MetricCard
+          title="Alertas Stock"
+          value={`${metrics.lowStockItems.length}`}
+          subtitle="Productos bajo mínimo"
+          alert
+        />
+      </div>
 
-        <div className="p-4 lg:p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard
-              title="Ventas Hoy"
-              value={`$${metrics.dailySales.toFixed(2)}`}
-              change="+15%"
-              positive
-            />
-            <MetricCard
-              title="Pollos Producidos"
-              value={`${metrics.chickensProduced}`}
-              subtitle={`${metrics.chickensProduced} unidades`}
-            />
-            <MetricCard
-              title="Tortillas Producidas"
-              value={`${metrics.tortillasProduced}`}
-              subtitle="5 kg de masa"
-            />
-            <MetricCard
-              title="Alertas Stock"
-              value={`${metrics.lowStockItems.length}`}
-              subtitle="Productos bajo mínimo"
-              alert
-            />
-          </div>
-
-          {metrics.lowStockItems.length ? (
-            <StockAlertCard items={metrics.lowStockItems} />
-          ) : (
-            <p>No hay alertas de stock.</p>
-          )}
-          
-          {transactions.length ? (
-            <RecentTransactionsCard transactions={transactions} />
-          ) : (
-            <p>No hay transacciones recientes.</p>
-          )}
-        </div>
-      </main>
+      {metrics.lowStockItems.length ? (
+        <StockAlertCard items={metrics.lowStockItems} />
+      ) : (
+        <EmptyState title="No hay alertas de stock" message="Actualmente no hay productos con stock bajo." />
+      )}
+      
+      {transactions.length ? (
+        <RecentTransactionsCard transactions={transactions} />
+      ) : (
+        <EmptyState title="No hay transacciones recientes" message="No se han registrado transacciones recientemente." />
+      )}
     </div>
-  );
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  active,
-}: {
-  icon: any;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Button
-      variant={active ? "secondary" : "ghost"}
-      className="w-full justify-start"
-    >
-      <Icon className="h-5 w-5 mr-3" />
-      {label}
-    </Button>
   );
 }
 
