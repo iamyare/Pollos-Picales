@@ -3,6 +3,7 @@ import { MainLayout } from "@/components/layouts/MainLayout";
 import { Dashboard } from "@/pages/Dashboard";
 import { POS } from "@/pages/POS";
 import { Products } from "./pages/Inventory";
+import { Production } from "./pages/Productions";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="pos" element={<POS />} />
           <Route path="products" element={<Products/>} />
+          <Route path="waste" element={<Production/>} />
           {/* Agregar más rutas según sea necesario */}
         </Route>
       </Routes>
