@@ -1,8 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { Database } from '../lib/database.types';
-
-type DailyProduction = Database['public']['Tables']['daily_production']['Insert'];
 
 interface ProductionStore {
   isLoading: boolean;

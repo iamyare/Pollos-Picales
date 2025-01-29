@@ -1,13 +1,17 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Production } from './pages/Production';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Dashboard } from "@/pages/Dashboard";
+import { Production } from "@/pages/Production";
+// Importar otros componentes
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/production" replace />} />
+        <Route path="/" element={<Dashboard />} />
         <Route path="/production" element={<Production />} />
+        {/* <Route path="/inventory" element={<Inventory />} />
+        <Route path="/sales" element={<Sales />} />
+        <Route path="/financials" element={<Financials />} /> */}
       </Routes>
     </Router>
   );
